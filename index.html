@@ -364,24 +364,25 @@
         <div class="mb-4 flex flex-col gap-2">
              <button onclick="openListsModal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded">📋 Редагувати списки</button>
              
-             <!-- Дві кнопки для завантаження -->
-             <div class="flex gap-1">
-                 <button onclick="triggerCsvUpload('4point')" class="w-1/2 bg-purple-600 hover:bg-purple-700 text-white text-[10px] px-1 py-1 rounded flex flex-col items-center justify-center h-10 leading-tight">
-                     <span>📥 .csv</span>
-                     <span>(4-бальна)</span>
-                 </button>
-                 <button onclick="triggerCsvUpload('12point')" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] px-1 py-1 rounded flex flex-col items-center justify-center h-10 leading-tight">
-                     <span>📥 .csv</span>
-                     <span>(12-бальна)</span>
-                 </button>
-             </div>
+             <button onclick="triggerCsvUpload()" class="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold px-2 py-2 rounded flex items-center justify-center shadow-md">
+                 📥 Завантажити .csv (4-бальна)
+             </button>
         </div>
 
         <!-- 1. ЗАГАЛЬНІ НАЛАШТУВАННЯ -->
         <div class="form-section">
-            <label class="form-label">Навчальний рік:</label>
-            <input type="text" id="in_year" class="form-input" value="2024/2025" oninput="updateView()">
-            <div class="grid grid-cols-2 gap-2 mt-2">
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="form-label">Навчальний рік:</label>
+                    <input type="text" id="in_year" class="form-input" value="2024/2025" oninput="updateView()">
+                </div>
+                <div>
+                    <label class="form-label">Тривал. (тижнів):</label>
+                    <div class="input-wrapper">
+                         <input type="text" id="in_sem_weeks" class="form-input pr-6" value="17" oninput="updateView()">
+                         <button class="clear-btn" onclick="clearInput('in_sem_weeks')">✕</button>
+                    </div>
+                </div>
                 <div>
                     <label class="form-label">Семестр (І/ІІ):</label>
                     <input type="text" id="in_semester" class="form-input" value="І-й" oninput="updateView()">
@@ -390,8 +391,6 @@
                     <label class="form-label">Курс:</label>
                     <input type="text" id="in_course" class="form-input" value="1" oninput="updateView()">
                 </div>
-            </div>
-            <div class="grid grid-cols-2 gap-2 mt-2">
                  <div>
                     <label class="form-label">Початок семестру:</label>
                     <input type="date" id="in_sem_start" class="form-input" value="2024-09-01" oninput="updateView()">
@@ -401,17 +400,9 @@
                     <input type="date" id="in_sem_end" class="form-input" value="2024-12-30" oninput="updateView()">
                 </div>
             </div>
-
-            <div class="mt-2">
-                <label class="form-label">Тривалість семестру (тижнів):</label>
-                <div class="input-wrapper">
-                     <input type="text" id="in_sem_weeks" class="form-input pr-6" value="17" oninput="updateView()">
-                     <button class="clear-btn" onclick="clearInput('in_sem_weeks')">✕</button>
-                </div>
-            </div>
             
             <div class="grid grid-cols-2 gap-2 mt-2 border-t pt-2">
-                <div class="col-span-2 text-xs font-bold text-gray-500 uppercase">Екзаменаційна сесія</div>
+                <div class="col-span-2 text-xs font-bold text-gray-500 uppercase leading-none mb-1">Екзаменаційна сесія</div>
                 <div>
                    <label class="form-label">Початок:</label>
                    <div class="input-wrapper">
@@ -645,7 +636,6 @@
         const STORAGE_KEY = 'semester_plan_v2_data';
         const LISTS_KEY = 'semester_plan_lists';
         let parsedCSVData = null; 
-        let currentCsvSystem = '4point';
 
         const SECTION_TITLES_DEFAULT = [
             "Освітні компоненти, що формують загальні компетентності",
@@ -688,8 +678,7 @@
         let items = JSON.parse(JSON.stringify(defaultItemsData));
         let lists = JSON.parse(JSON.stringify(defaultLists));
 
-        function triggerCsvUpload(system) {
-            currentCsvSystem = system;
+        function triggerCsvUpload() {
             document.getElementById('csvFileInput').click();
         }
 
@@ -774,8 +763,9 @@
                  localStorage.setItem(LISTS_KEY, JSON.stringify(lists));
                  
                  populateSelects();
+                 renderSubjectsInput();
 
-                 customAlert(`Файл успішно оброблено (${currentCsvSystem === '12point' ? '12-бальна система' : '4-бальна система'})!\n\nОновлено списки:\n- Студентів: ${Object.keys(parsedCSVData).length}\n- Предметів: ${foundSubjects.length}\n\nТепер оберіть студента зі списку.`);
+                 customAlert(`Файл успішно оброблено (4-бальна система)!\n\nОновлено списки:\n- Студентів: ${Object.keys(parsedCSVData).length}\n- Предметів: ${foundSubjects.length}\n\nТепер оберіть студента зі списку.`);
                  
                  const currentStudent = document.getElementById('in_student').value;
                  if (currentStudent) {
@@ -827,7 +817,7 @@
                         if (foundSubjectKey) {
                             const rawGrade = grades[foundSubjectKey];
                             if (rawGrade) {
-                                const mapped = mapGrade(rawGrade.toString(), currentCsvSystem);
+                                const mapped = mapGrade(rawGrade.toString());
                                 item.gradeNational = mapped.national;
                                 item.grade4 = mapped.scale4;
                                 updated = true;
@@ -844,30 +834,21 @@
             }
         }
 
-        function mapGrade(grade, system) {
+        function mapGrade(grade) {
             const g = grade.toString().trim().toLowerCase();
             
             if (['зараховано', 'зар', 'зар.', 'з'].includes(g)) return { national: 'зараховано', scale4: 'зар' };
             if (['не зараховано', 'н/з'].includes(g)) return { national: 'не зараховано', scale4: 'н/з' };
             if (['не атестовано', 'н/а'].includes(g)) return { national: 'не атестовано', scale4: 'н/а' };
             
-            if (system === '12point') {
-                const num = parseFloat(g);
-                if (!isNaN(num)) {
-                     return { national: grade.toString().trim(), scale4: grade.toString().trim() };
-                }
-            }
-            
             if (['5', 'відмінно'].includes(g)) return { national: '5 (відмінно)', scale4: '5' };
             if (['4', 'добре'].includes(g)) return { national: '4 (добре)', scale4: '4' };
             if (['3', 'задовільно'].includes(g)) return { national: '3 (задовільно)', scale4: '3' };
             if (['2', 'незадовільно'].includes(g)) return { national: '2 (незадовільно)', scale4: '2' };
             
-            if (system !== '12point') {
-                if (g === '5') return { national: '5 (відмінно)', scale4: '5' };
-                if (g === '4') return { national: '4 (добре)', scale4: '4' };
-                if (g === '3') return { national: '3 (задовільно)', scale4: '3' };
-            }
+            if (g === '5') return { national: '5 (відмінно)', scale4: '5' };
+            if (g === '4') return { national: '4 (добре)', scale4: '4' };
+            if (g === '3') return { national: '3 (задовільно)', scale4: '3' };
             
             return { national: grade, scale4: grade }; 
         }
